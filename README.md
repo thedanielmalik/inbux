@@ -61,4 +61,4 @@ The Edge Functions are already deployed in Supabase:
 Never expose `RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET`, or a Supabase secret key in browser code or `NEXT_PUBLIC_` variables.
 
 
-<!-- Vercel deployment trigger: 2026-10-02 -->
+<!-- Vercel deployment trigger: Supabase build fix 2026-10-02 -->
