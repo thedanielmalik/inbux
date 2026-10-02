@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, Mail, Save, Send, ShieldCheck, Users } from "lucide-react";
+import { CheckCircle2, Image as ImageIcon, Link2, Mail, Play, Save, Send, ShieldCheck, Users } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { getOrCreateWorkspace } from "@/lib/inbux/workspace";
 import { EMAIL_TEMPLATES } from "@/lib/inbux/email-templates";
