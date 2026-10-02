@@ -2,7 +2,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { withSupabase } from "npm:@supabase/server@^1";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
-const APP_URL = Deno.env.get("INBUX_APP_URL") ?? Deno.env.get("NEXT_PUBLIC_APP_URL") ?? "";
+const APP_URL = Deno.env.get("INBUX_APP_URL") ?? Deno.env.get("NEXT_PUBLIC_APP_URL") ?? "https://liijxwiambsqapgbbfre.supabase.co";
 
 function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), { status, headers: { "content-type": "application/json" } });
