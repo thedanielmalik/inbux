@@ -53,6 +53,21 @@ Deno.serve(async (req) => {
 
       if (Object.keys(updates).length) {
         await admin.from("campaign_recipients").update(updates).eq("id", recipientId).eq("campaign_id", campaignId);
+        const { count: sentCount } = await admin.from("campaign_recipients").select("id", { count: "exact", head: true }).eq("campaign_id", campaignId).in("status", ["sent","delivered","bounced","complained"]);
+        const { count: deliveredCount } = await admin.from("campaign_recipients").select("id", { count: "exact", head: true }).eq("campaign_id", campaignId).eq("status", "delivered");
+        const { count: bouncedCount } = await admin.from("campaign_recipients").select("id", { count: "exact", head: true }).eq("campaign_id", campaignId).eq("status", "bounced");
+        const { count: complainedCount } = await admin.from("campaign_recipients").select("id", { count: "exact", head: true }).eq("campaign_id", campaignId).eq("status", "complained");
+        const { count: openedCount } = await admin.from("campaign_recipients").select("id", { count: "exact", head: true }).eq("campaign_id", campaignId).not("opened_at", "is", null);
+        const { count: clickedCount } = await admin.from("campaign_recipients").select("id", { count: "exact", head: true }).eq("campaign_id", campaignId).not("clicked_at", "is", null);
+        await admin.from("campaigns").update({
+          sent_count: sentCount ?? 0,
+          delivered_count: deliveredCount ?? 0,
+          bounced_count: bouncedCount ?? 0,
+          complained_count: complainedCount ?? 0,
+          opened_count: openedCount ?? 0,
+          clicked_count: clickedCount ?? 0,
+          updated_at: new Date().toISOString()
+        }).eq("id", campaignId);
       }
 
       if (event.type === "email.bounced" || event.type === "email.complained") {
