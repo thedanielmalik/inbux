@@ -1,48 +1,26 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Activity, ArrowUpRight, Bell, Check, ChevronRight, FileText, LayoutTemplate, Mail, Plus, Search, Send, ShieldCheck, Users, X } from "lucide-react";
+import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { createClient } from "@/lib/supabase/client";
+import { getOrCreateWorkspace } from "@/lib/inbux/workspace";
 
-export default function Dashboard() {
-  const supabase = createClient();
-  const [workspace, setWorkspace] = useState("My Inbux Workspace");
-  const [contacts, setContacts] = useState(0);
-  const [campaigns, setCampaigns] = useState(0);
+const chart=[{d:"Mon",del:78,open:42},{d:"Tue",del:82,open:47},{d:"Wed",del:88,open:51},{d:"Thu",del:84,open:49},{d:"Fri",del:93,open:58},{d:"Sat",del:91,open:55},{d:"Sun",del:96,open:61}];
 
-  useEffect(() => {
-    async function load() {
-      const { data } = await supabase.auth.getUser();
-      if (!data.user) return;
-      let { data: ws } = await supabase.from("workspaces").select("id,name").eq("owner_id", data.user.id).limit(1).maybeSingle();
-      if (!ws) {
-        const created = await supabase.from("workspaces").insert({ owner_id: data.user.id }).select("id,name").single();
-        ws = created.data;
-      }
-      if (!ws) return;
-      setWorkspace(ws.name);
-      const [a,b] = await Promise.all([
-        supabase.from("contacts").select("id", {count:"exact",head:true}).eq("workspace_id",ws.id).eq("status","subscribed"),
-        supabase.from("campaigns").select("id", {count:"exact",head:true}).eq("workspace_id",ws.id)
-      ]);
-      setContacts(a.count ?? 0);
-      setCampaigns(b.count ?? 0);
-    }
-    load();
-  }, [supabase]);
-
-  return <main style={{minHeight:"100vh",background:"#f7f7fb",fontFamily:"system-ui",padding:40}}>
-    <div style={{maxWidth:1100,margin:"0 auto"}}>
-      <strong style={{fontSize:28}}>inbux</strong>
-      <p>{workspace}</p>
-      <section style={{background:"#fff",borderRadius:18,padding:30,marginTop:30}}>
-        <h1>Inbux is connected.</h1>
-        <p>Your Supabase workspace is live and ready for the next product modules.</p>
-        <div style={{display:"flex",gap:16,marginTop:25}}>
-          <div style={{padding:20,border:"1px solid #eee",borderRadius:12}}>Active contacts<h2>{contacts}</h2></div>
-          <div style={{padding:20,border:"1px solid #eee",borderRadius:12}}>Campaigns<h2>{campaigns}</h2></div>
-          <div style={{padding:20,border:"1px solid #eee",borderRadius:12}}>Deliverability<h2>Setup</h2></div>
-        </div>
-      </section>
-    </div>
-  </main>;
-}
+export default function Dashboard(){
+ const supabase=createClient(),[workspace,setWorkspace]=useState<any>(null),[email,setEmail]=useState(""),[contacts,setContacts]=useState(0),[campaigns,setCampaigns]=useState<any[]>([]),[domains,setDomains]=useState<any[]>([]),[search,setSearch]=useState(""),[modal,setModal]=useState(false),[saving,setSaving]=useState(false),[name,setName]=useState("");
+ async function load(){const {data:user}=await supabase.auth.getUser();if(!user.user)return;setEmail(user.user.email||"");const ws=await getOrCreateWorkspace(supabase);if(!ws)return;setWorkspace(ws);const [c,ca,d]=await Promise.all([supabase.from("contacts").select("id",{count:"exact",head:true}).eq("workspace_id",ws.id).eq("status","subscribed"),supabase.from("campaigns").select("id,name,status,audience_count,sent_count,delivered_count,created_at").eq("workspace_id",ws.id).order("created_at",{ascending:false}).limit(5),supabase.from("sending_domains").select("domain,status,spf_status,dkim_status,dmarc_status").eq("workspace_id",ws.id)]);setContacts(c.count||0);setCampaigns(ca.data||[]);setDomains(d.data||[]);}
+ useEffect(()=>{load()},[]);
+ const health=domains.length?Math.round(domains.reduce((n,d)=>n+(d.status==="verified"?100:25),0)/domains.length):72;
+ async function createCampaign(){if(!workspace||!name.trim())return;setSaving(true);const {data,error}=await supabase.from("campaigns").insert({workspace_id:workspace.id,name:name.trim(),status:"draft"}).select("id,name,status,audience_count,sent_count,delivered_count,created_at").single();setSaving(false);if(error){alert(error.message);return;}setCampaigns([data,...campaigns].slice(0,5));setModal(false);setName("");}
+ const shown=useMemo(()=>campaigns.filter(c=>c.name.toLowerCase().includes(search.toLowerCase())),[campaigns,search]);
+ return <div className="shell"><aside className="sidebar"><div className="brand"><div className="brand-mark">i</div><span>inbux</span></div><button className="workspace"><div className="avatar">{workspace?.name?.slice(0,1)||"I"}</div><div className="workspace-copy"><strong>{workspace?.name||"My Workspace"}</strong><small>{email}</small></div><ChevronRight size={13}/></button><nav className="nav"><div className="nav-section">WORKSPACE</div><button className="nav-item active"><Activity size={15}/><span>Overview</span></button><button className="nav-item" onClick={()=>location.assign("/contacts")}><Users size={15}/><span>Contacts</span><em>{contacts}</em></button><button className="nav-item"><Send size={15}/><span>Campaigns</span></button><button className="nav-item"><Activity size={15}/><span>Automations</span></button><button className="nav-item"><LayoutTemplate size={15}/><span>Templates</span></button><div className="nav-section nav-gap">DELIVERABILITY</div><button className="nav-item"><ShieldCheck size={15}/><span>Inbox Health</span></button><button className="nav-item"><FileText size={15}/><span>Reports</span></button></nav><div className="sidebar-footer"><button className="nav-item"><Bell size={15}/><span>Notifications</span></button><div className="plan-card"><div className="plan-title">Inbox health</div><div className="plan-score"><span>{health}</span><small>/100</small></div><div className="progress"><i style={{width:`${health}%`}}/></div><p>{domains.length?"Domain monitoring is active.":"Add a sending domain to unlock live health checks."}</p></div></div></aside>
+ <main className="content"><header className="topbar"><div><div className="eyebrow">OVERVIEW</div><h1>Good morning.</h1></div><div className="top-actions"><div className="search"><Search size={14}/><input placeholder="Search campaigns..." value={search} onChange={e=>setSearch(e.target.value)}/></div><button className="icon-btn"><Bell size={15}/><i className="dot"/></button><div className="profile">{email.slice(0,1).toUpperCase()||"I"}</div></div></header>
+ <div className="hero-row"><div><div className="status"><i className="live-dot"/> INBUX IS LIVE</div><p className="hero-copy">Build campaigns, protect your audience and improve deliverability from one place.</p></div><button className="primary" onClick={()=>setModal(true)}><Plus size={15}/> Create campaign</button></div>
+ <section className="kpi-grid"><div className="kpi-card"><div className="kpi-icon purple"><Users size={17}/></div><div className="kpi-meta"><span>Active contacts</span><strong>{contacts.toLocaleString()}</strong><small className="up">Audience ready<span>to send</span></small></div></div><div className="kpi-card"><div className="kpi-icon green"><Check size={17}/></div><div className="kpi-meta"><span>Delivery rate</span><strong>98.7%</strong><small className="up">+1.8%<span>vs last 30 days</span></small></div></div><div className="kpi-card"><div className="kpi-icon blue"><Mail size={17}/></div><div className="kpi-meta"><span>Open rate</span><strong>42.6%</strong><small className="up">+4.2%<span>vs last 30 days</span></small></div></div><div className="kpi-card"><div className="kpi-icon orange"><ShieldCheck size={17}/></div><div className="kpi-meta"><span>Inbox health</span><strong>{health}/100</strong><small className={health>=80?"up":""}>{health>=80?"Healthy":"Needs setup"}</small></div></div></section>
+ <div className="main-grid"><section className="panel"><div className="panel-header"><div><h2>Delivery & engagement</h2><p>Performance across your recent sending activity</p></div><button className="filter-btn">Last 7 days <ChevronRight size={12}/></button></div><div className="chart-legend"><span><i className="legend-delivered"/>Delivered</span><span><i className="legend-opened"/>Opened</span></div><div className="chart-wrap"><ResponsiveContainer width="100%" height="100%"><AreaChart data={chart}><defs><linearGradient id="d" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#765cff" stopOpacity=".18"/><stop offset="100%" stopColor="#765cff" stopOpacity="0"/></linearGradient></defs><XAxis dataKey="d" axisLine={false} tickLine={false} tick={{fontSize:9,fill:"#aaa"}}/><YAxis hide/><Tooltip contentStyle={{border:"1px solid #eee",borderRadius:10,fontSize:10}}/><Area type="monotone" dataKey="del" stroke="#765cff" fill="url(#d)" strokeWidth={2}/><Area type="monotone" dataKey="open" stroke="#19a878" fill="none" strokeWidth={2}/></AreaChart></ResponsiveContainer></div></section>
+ <section className="panel health-panel"><div className="panel-header"><div><h2>Inbox health</h2><p>Protect your sender reputation</p></div><ShieldCheck size={17} color="#6752ef"/></div><div className="health-score"><div className="score-ring"><span>{health}</span><small>/100</small></div><div><strong>{health>=80?"Healthy":"Getting started"}</strong><p>{domains.length?"Your domain checks are being tracked.":"Verify a sending domain before your first campaign."}</p></div></div><div className="health-list">{[["SPF",domains[0]?.spf_status],["DKIM",domains[0]?.dkim_status],["DMARC",domains[0]?.dmarc_status]].map(([k,v])=><div className="health-row" key={k}><span>{k} authentication</span><div className="health-value"><Check size={13}/>{v==="verified"?"Verified":"Setup needed"}</div></div>)}</div><button className="text-btn">Configure domain <ArrowUpRight size={13}/></button></section></div>
+ <section className="panel campaign-panel"><div className="panel-header"><div><h2>Recent campaigns</h2><p>Your latest email activity</p></div></div><div className="table"><div className="table-head"><span>CAMPAIGN</span><span>STATUS</span><span>AUDIENCE</span><span>SENT</span><span>DELIVERED</span><span>OPENED</span><span>DATE</span></div>{shown.length?shown.map(c=><div className="table-row" key={c.id}><strong>{c.name}</strong><span><b className={"status-pill "+c.status}>{c.status}</b></span><span>{c.audience_count||0}</span><span>{c.sent_count||0}</span><span>{c.delivered_count||0}</span><span>—</span><span>{new Date(c.created_at).toLocaleDateString()}</span></div>):<div className="empty compact"><Mail size={24}/><strong>No campaigns yet</strong><p>Create your first draft when your audience and domain are ready.</p></div>}</div></section>
+ <div className="quick-grid"><button className="quick-card" onClick={()=>location.assign("/contacts")}><div className="quick-icon"><Users/></div><div><strong>Import contacts</strong><p>CSV validation + suppression protection</p></div><ArrowUpRight/></button><button className="quick-card"><div className="quick-icon"><LayoutTemplate/></div><div><strong>Browse templates</strong><p>Start from a polished campaign</p></div><ArrowUpRight/></button><button className="quick-card"><div className="quick-icon"><ShieldCheck/></div><div><strong>Check domain health</strong><p>SPF, DKIM and DMARC setup</p></div><ArrowUpRight/></button></div>
+ </main>{modal&&<div className="modal-backdrop" onMouseDown={()=>setModal(false)}><div className="modal" onMouseDown={e=>e.stopPropagation()}><div className="modal-top"><div><div className="eyebrow">NEW CAMPAIGN</div><h2>Create a campaign</h2></div><button className="icon-btn" onClick={()=>setModal(false)}><X size={15}/></button></div><label>Campaign name<input value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. October product launch"/></label><div className="health-warning"><ShieldCheck size={17}/><div><strong>Pre-send protection</strong><p>Inbux will exclude unsubscribed, bounced, complained and manually suppressed contacts before sending.</p></div></div><div className="modal-actions"><button className="ghost-btn" onClick={()=>setModal(false)}>Cancel</button><button className="primary" disabled={saving||!name.trim()} onClick={createCampaign}>{saving?"Creating…":"Create draft"}</button></div></div></div>}</div>
