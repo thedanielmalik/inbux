@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CheckCircle2, Image as ImageIcon, Link2, Mail, Monitor, Play, Save, Send, ShieldCheck, Smartphone, Users } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { getOrCreateWorkspace } from "@/lib/inbux/workspace";
@@ -10,6 +10,7 @@ export default function CampaignsPage(){
  const supabase=createClient();
  const [id,setId]=useState(""),[campaign,setCampaign]=useState<any>(null),[contacts,setContacts]=useState<any[]>([]),[workspace,setWorkspace]=useState<any>(null),[domains,setDomains]=useState<any[]>([]);
  const [subject,setSubject]=useState(""),[preview,setPreview]=useState(""),[fromName,setFromName]=useState(""),[fromEmail,setFromEmail]=useState(""),[replyTo,setReplyTo]=useState(""),[body,setBody]=useState(""),[saving,setSaving]=useState(false),[sending,setSending]=useState(false),[saved,setSaved]=useState(false),[error,setError]=useState("");
+ const editorRef=useRef<HTMLDivElement>(null); const [templateCategory,setTemplateCategory]=useState("All"); const [showTemplates,setShowTemplates]=useState(false); const [showMedia,setShowMedia]=useState<"image"|"video"|null>(null); const [mediaUrl,setMediaUrl]=useState(""); const [mediaThumb,setMediaThumb]=useState(""); const [previewMode,setPreviewMode]=useState<"desktop"|"mobile">("desktop"); const [showPreview,setShowPreview]=useState(false);
  useEffect(()=>{setId(new URLSearchParams(location.search).get("id")||"")},[]);
  useEffect(()=>{if(!id)return;(async()=>{const ws=await getOrCreateWorkspace(supabase);if(!ws)return;setWorkspace(ws);const [{data:c},{data:p},{data:d}]=await Promise.all([
    supabase.from("campaigns").select("*").eq("id",id).eq("workspace_id",ws.id).single(),
