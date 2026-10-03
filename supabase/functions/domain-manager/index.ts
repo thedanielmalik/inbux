@@ -31,8 +31,16 @@ Deno.serve(async (req) => withSupabase({ auth: "user" }, async (req, ctx) => {
     const result = await response.json();
     if (!response.ok) return json({ error: result?.message || "Resend could not add the domain." }, response.status);
 
+    const { data: workspace, error: workspaceError } = await ctx.supabase
+      .from("workspaces")
+      .select("id")
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .single();
+    if (workspaceError || !workspace) return json({ error: "Inbux workspace not found." }, 404);
+
     const { data, error } = await ctx.supabase.from("sending_domains").upsert({
-      workspace_id: (await ctx.supabase.from("workspaces").select("id").limit(1).single()).data?.id,
+      workspace_id: workspace.id,
       domain,
       provider: "resend",
       provider_domain_id: result.id,
